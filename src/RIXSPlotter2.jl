@@ -1,5 +1,8 @@
 module RIXSPlotter2
 
-# Write your package code here.
+# using
+    using PyPlot
+    using LinearAlgebra
+    using RIXSCalculator2
 
 end

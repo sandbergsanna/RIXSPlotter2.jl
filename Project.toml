@@ -3,6 +3,11 @@ uuid = "d6617519-7f85-45cd-be1c-9734b4d576f0"
 authors = ["Anna Sandberg"]
 version = "1.0.0-DEV"
 
+[deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
+RIXSCalculator2 = "476f1527-6383-4387-ad43-e17232a54417"
+
 [compat]
 julia = "1.6.7"
 
