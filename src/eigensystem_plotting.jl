@@ -18,7 +18,7 @@ function show_energy_evolution(op :: AbstractOperator, parameter::Symbol, values
     bands = [zeros(length(values)) for i in 1:length(basis(op))]
     ba_param = get_parameter(op, parameter, site=site)
     for i in 1:length(values)
-        set_parameter!(op, parameter, values[i]; site=site)
+        set_parameter!(op, parameter, recalculate=true, values[i]; site=site)
         evals = energies(op)
         for j in 1:length(evals)
             bands[j][i] = evals[j]
@@ -115,7 +115,7 @@ function show_energy_evolution_with_parameters(op :: AbstractOperator, parameter
     bands = [zeros(length(values)) for i in 1:length(basis(op))]
     ba_param = get_parameter(op, parameter, site=site)
     for i in 1:length(values)
-        set_parameter!(op, parameter, values[i]; site=site)
+        set_parameter!(op, parameter, values[i]; recalculate=true, site=site)
         evals = energies(op)
         for j in 1:length(evals)
             bands[j][i] = evals[j]
@@ -161,7 +161,7 @@ function showMPState_evolution(
     # get all contributions
     for i in 1:length(values)
         # set the paramter
-        set_parameter!(op, parameter, values[i]; site=site)
+        set_parameter!(op, parameter, values[i]; recalculate=true, site=site)
         eigsys = eigensystem(op)
         # obtain the eigenvector
         evec = eigsys[:vectors][index]
@@ -253,7 +253,7 @@ function showMPState_evolution_grouped(
     # get all contributions
     for i in 1:length(values)
         # set the paramter
-        set_parameter!(op, parameter, values[i]; site=site)
+        set_parameter!(op, parameter, values[i];recalculate=true, site=site)
         eigsys = eigensystem(op)
         # obtain the eigenvector
         for index in indices
@@ -332,7 +332,7 @@ function showMPState_evolution_grouped(
     # get all contributions
     for i in 1:length(values)
         # set the paramter
-        set_parameter!(op, parameter, values[i]; site=site)
+        set_parameter!(op, parameter, values[i]; recalculate=true, site=site)
         eigsys = eigensystem(op)
         # obtain the eigenvector
         evec = eigsys[:vectors][index]
