@@ -1,1 +1,14 @@
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+
+developement/
+developement/*
+developement*/
+
+*.txt
+CMD.lnk
+
+*.ipynb_checkpoints
+
 /Manifest*.toml

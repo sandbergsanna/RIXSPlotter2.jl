@@ -18,7 +18,7 @@ function show_energy_evolution(op :: AbstractOperator, parameter::Symbol, values
     bands = [zeros(length(values)) for i in 1:length(basis(op))]
     ba_param = get_parameter(op, parameter, site=site)
     for i in 1:length(values)
-        set_parameter!(op, parameter, recalculate=true, values[i]; site=site)
+        set_parameter!(op, parameter, values[i];  recalculate=true, site=site)
         evals = energies(op)
         for j in 1:length(evals)
             bands[j][i] = evals[j]
