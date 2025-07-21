@@ -60,8 +60,5 @@ function plot_spectrum(
     end
 end
 
-
-
-
 # export functions
 export plot_spectrum
