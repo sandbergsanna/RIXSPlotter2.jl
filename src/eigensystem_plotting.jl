@@ -176,7 +176,8 @@ function show_energy_evolution_multiple_sites(op :: AbstractOperator, parameter:
         for l in lines
             print(f,"# ",l, "\n")
         end
-        print(f, "# varying parameter :$(parameter)\n#\n")
+        print(f, "# varying parameter :$(parameter) \n")
+        print(f, "# on sites: $(sites) \n#\n")
         # write header line
         hl = "# :$(parameter)"
         for j in 1:length(bands)
