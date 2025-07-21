@@ -208,7 +208,70 @@ function show_energy_evolution_multiple_sites(op :: AbstractOperator, parameter:
 end
 export show_energy_evolution_multiple_sites
 
-
+# energy evolution - panel plot with energy evolution for multiple parameters
+function show_energy_evolution_panelplot(op :: AbstractOperator, parameters :: Vector{Symbol}, param_values :: Vector{<:Vector{<:Number}}; subtract_GS:: Bool =true, new_figure:: Bool=true,color ::String ="k")
+    # get parameters
+    ba_params = [get_parameter(op, param,site=:all) for param in parameters];
+    # length parameters stacked
+    param_vec=collect(range(1, stop=sum([length(param_values[i]) for i in eachindex(param_values)]), step=1))
+    # E_vec - bands
+    bands = [zeros(length(param_vec)) for i in 1:length(energies(lab.hamiltonian))]
+    i=1
+    # SWEEP PARAMETERS
+    for n in eachindex(param_values)
+        for k in 1:length(param_values[n])
+            # set parameter
+            set_parameter!(op, parameters[n],  param_values[n][k]; recalculate=true, site=:all)
+            # eval energies
+            evals = energies(op)
+            # save energies
+            for j in 1:length(evals)
+                bands[j][i] = evals[j]
+            end
+            # subtract GS?
+            if subtract_GS
+                for j in 1:length(evals)
+                    bands[j][i] -= evals[1]
+                end
+            end
+        i+=1
+        end
+    end
+    if new_figure
+        # plotting
+        figure()
+        # ylabel
+        ylabel("Energy [meV]",fontsize=14)
+        #lim
+        ylim(0,2000)
+        xlim(1,param_vec[end])
+        # labels xticks and vertical lines
+        labels=[String(parameters[i])*"=$(param_values[i][end])" for i in eachindex(parameters)]
+        ticks=zeros(length(parameters))
+        t=0
+        line=0
+        for i in eachindex(parameters)
+            # xticks
+            t+=length(param_values[i])
+            ticks[i]=t
+            #vertical lines
+            line+=length(param_values[i])
+            axvline(line,c="gray",ls="dashed")
+        end
+        # set x ticks
+        xticks(ticks=ticks,labels=labels)
+        tick_params(axis="both", labelsize=14)
+    end
+    # plot
+    for b in bands
+        plot(param_vec, b,c=color)
+    end
+    #reset parameters
+    for i in eachindex(parameters)
+        set_parameter!(op, parameters[i],ba_params[i]; recalculate=true,site=:all);
+    end  
+end
+export show_energy_evolution_panelplot
 
 function showMPState_evolution(
         op :: AbstractOperator,
