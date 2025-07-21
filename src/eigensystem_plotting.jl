@@ -140,6 +140,74 @@ function show_energy_evolution_with_parameters(op :: AbstractOperator, parameter
 end
 export show_energy_evolution_with_parameters
 
+function show_energy_evolution_multiple_sites(op :: AbstractOperator, parameter::Symbol, values, sites :: Vector{Int64}; subtract_GS::Bool = false, figsize::Tuple=(8,5), new_figure=true, dumpfile::String="", color="b", kwargs...)
+    if new_figure
+        figure(figsize=figsize)
+    end
+    bands = [zeros(length(values)) for i in 1:length(basis(op))]
+    # Save original parameters
+    ba_params=zeros(length(sites))
+    for i in 1:length(sites)
+        ba_params[i] = get_parameter(op, parameter, site=sites[i])
+    end
+    # Sweep parameter values and calculate energies
+    for i in 1:length(values)
+        # Set parameter for given sites
+        for s in 1:length(sites)
+            set_parameter!(op, parameter, values[i]; recalculate=true, site=sites[s])
+        end
+        # Calculate and collect energies
+        evals = energies(op)
+        for j in 1:length(evals)
+            bands[j][i] = evals[j]
+        end
+        if subtract_GS
+            for j in 1:length(evals)
+                bands[j][i] -= evals[1]
+            end
+        end
+    end
+    # saving
+    if dumpfile != ""
+        # open file
+        f = open(dumpfile, "w")
+        # write header line
+        lines = split(string(op), "\n")
+        for l in lines
+            print(f,"# ",l, "\n")
+        end
+        print(f, "# varying parameter :$(parameter)\n#\n")
+        # write header line
+        hl = "# :$(parameter)"
+        for j in 1:length(bands)
+            hl = hl * "\tE_$(j)"
+        end
+        print(f, hl, "\n")
+        # write body
+        for i in 1:length(values)
+            l = "$(values[i])"
+            for j in 1:length(bands)
+                l = l * "\t$(bands[j][i])"
+            end
+            print(f, l, "\n")
+        end
+        # close file
+        close(f)
+    end
+    # plotting
+    ylabel("energy")
+    xlabel("parameter \"$(parameter)\"")
+    xlim(values[1], values[end])
+    for b in bands
+        plot(values, b, color=color; kwargs...)
+    end
+    # Reset parameters
+    for i in 1:length(sites)
+        set_parameter!(op, parameter, ba_params[i], site=sites[i])
+    end
+end
+export show_energy_evolution_multiple_sites
+
 
 
 function showMPState_evolution(
