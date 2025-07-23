@@ -216,7 +216,7 @@ function show_energy_evolution_panelplot(op :: AbstractOperator, parameters :: V
     # length parameters stacked
     param_vec=collect(range(1, stop=sum([length(param_values[i]) for i in eachindex(param_values)]), step=1))
     # E_vec - bands
-    bands = [zeros(length(param_vec)) for i in 1:length(energies(lab.hamiltonian))]
+    bands = [zeros(length(param_vec)) for i in 1:length(energies(op))]
     i=1
     # SWEEP PARAMETERS
     for n in eachindex(param_values)
