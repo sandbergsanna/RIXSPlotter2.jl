@@ -269,3 +269,125 @@ end
 
 # export the function
 export plot_dq_dependence
+
+# Function that plots the theta dependence of given multiplets
+function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{<:Real}, twotheta :: Real, dQ :: Real, to_multiplets::Vector{Int64}; new_figure:: Bool=true,dumpfile::String="", kwargs...)
+    # unique energies
+    unique_energies,indices=multiplets(lab.eigensys)
+    # calc I vs theta for multiplets
+    I=[theta_dependence_multiplet(lab,theta_values,twotheta,dQ,i) for i in to_multiplets]
+    # if new figure
+    if new_figure
+        figure()
+        # labels
+        ylabel("RIXS intensity (arb. units)",fontsize=15)
+        xlabel(L"\Theta (deg)",fontsize=15)
+        # ticks
+        minorticks_on()
+        tick_params(axis="both",which="both",labelsize=15,direction="in")
+        tick_params(axis="both", which="major",length=5)
+        tick_params(axis="both", which="minor",length=3)
+    end
+    # plot
+    for i in eachindex(to_multiplets)
+        plot(theta_values,I[i],label="E=$(round(unique_energies[to_multiplets[i]]-unique_energies[1]))")
+    end
+    # legend
+    legend()
+    # saving
+    if dumpfile != ""
+        # open file
+        f = open(dumpfile*".txt", "w")
+        # write header line hamiltonian
+        lines = split(string(lab.hamiltonian), "\n")
+        for l in lines
+            print(f,"# ",l, "\n")
+        end
+        # write header with multiplet energies
+        print(f, "# RIXS intensity (arb. units) for multiplets as a function of theta \n")
+        print(f, "# dQ= $(dQ) \n#\n")
+        el="# Multiplet energies: \n"
+        for i in to_multiplets
+            el=el*" \t$(round(unique_energies[i]-unique_energies[1]))"
+        end
+        print(f,el,"\n")
+        # write header line
+        hl = "# theta \t"
+        for i in to_multiplets
+            hl = hl * "\t I(E_$(i))"
+        end
+        print(f, hl, "\n")
+        # write body
+        for i in 1:length(theta_values)
+            l = "$(theta_values[i])"
+            for j in eachindex(to_multiplets)
+                l = l * "\t$(I[j][i])"
+            end
+            print(f, l, "\n")
+        end
+        # close file
+        close(f)
+    end
+end
+export plot_theta_dependence_multiplets
+
+# Function that plots the dq dependence of given multiplets
+function plot_dq_dependence_multiplets(lab:: LabSystem, dq_values::Vector{<:Real}, q_beam :: Real, to_multiplets::Vector{Int64}; new_figure:: Bool=true,dumpfile::String="", kwargs...)
+    # unique energies
+    unique_energies,indices=multiplets(lab.eigensys)
+    # calc I vs theta for multiplets
+    I=[dq_dependence_multiplet(lab,dq_values,q_beam,i) for i in to_multiplets]
+    # if new figure
+    if new_figure
+        figure()
+        # labels
+        ylabel("RIXS intensity (arb. units)",fontsize=15)
+        xlabel("dq [pi]",fontsize=15)
+        # ticks
+        minorticks_on()
+        tick_params(axis="both",which="both",labelsize=15,direction="in")
+        tick_params(axis="both", which="major",length=5)
+        tick_params(axis="both", which="minor",length=3)
+    end
+    # plot
+    for i in eachindex(to_multiplets)
+        plot(dq_values./pi,I[i],label="E=$(round(unique_energies[to_multiplets[i]]-unique_energies[1]))")
+    end
+    # legend
+    legend()
+    # saving
+    if dumpfile != ""
+        # open file
+        f = open(dumpfile*".txt", "w")
+        # write header line hamiltonian
+        lines = split(string(lab.hamiltonian), "\n")
+        for l in lines
+            print(f,"# ",l, "\n")
+        end
+        # write header with multiplet energies
+        print(f, "# RIXS intensity (arb. units) for multiplets as a function of theta \n")
+        print(f, "# dQ= $(dQ) \n#\n")
+        el="# Multiplet energies: \n"
+        for i in to_multiplets
+            el=el*" \t$(round(unique_energies[i]-unique_energies[1]))"
+        end
+        print(f,el,"\n")
+        # write header line
+        hl = "# theta \t"
+        for i in to_multiplets
+            hl = hl * "\t I(E_$(i))"
+        end
+        print(f, hl, "\n")
+        # write body
+        for i in 1:length(theta_values)
+            l = "$(theta_values[i])"
+            for j in eachindex(to_multiplets)
+                l = l * "\t$(I[j][i])"
+            end
+            print(f, l, "\n")
+        end
+        # close file
+        close(f)
+    end
+end
+export plot_dq_dependence_multiplets
