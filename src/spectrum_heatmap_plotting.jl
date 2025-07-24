@@ -2,9 +2,9 @@
 function plot_spectrum_heatmap(
         lab         :: LabSystem,
         dq_values   :: Vector{<:Real},
-        q_beam      :: Float64,
+        q_beam      :: Real,
         energies    :: Vector{<:Real},
-        lwidth      :: Float64;
+        lwidth      :: Real;
         new_figure  :: Bool = true,
         show_figure :: Bool = true,
         dumpfile :: String=""
@@ -82,10 +82,10 @@ end
 function plot_spectrum_heatmap(
         lab         :: LabSystem,
         dq_values   :: Vector{<:Real},
-        q_beam      :: Float64,
+        q_beam      :: Real,
         energies    :: Vector{<:Real},
-        lwidth      :: Float64,
-        unit_l      :: Float64;
+        lwidth      :: Real,
+        unit_l      :: Real;
         new_figure  :: Bool = true,
         show_figure :: Bool = true,
         dumpfile :: String=""
