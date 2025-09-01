@@ -271,7 +271,7 @@ end
 export plot_dq_dependence
 
 # Function that plots the theta dependence of given multiplets
-function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{<:Real}, twotheta :: Real, dQ :: Real, to_multiplets::Vector{Int64}; new_figure:: Bool=true,dumpfile::String="", kwargs...)
+function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{<:Real}, twotheta :: Real, dQ :: Real, to_multiplets::Vector{<:Integer}; new_figure:: Bool=true,dumpfile::String="")
     # unique energies
     unique_energies,indices=multiplets(lab.eigensys)
     # calc I vs theta for multiplets
@@ -332,7 +332,7 @@ end
 export plot_theta_dependence_multiplets
 
 # Function that plots the dq dependence of given multiplets
-function plot_dq_dependence_multiplets(lab:: LabSystem, dq_values::Vector{<:Real}, q_beam :: Real, to_multiplets::Vector{Int64}; new_figure:: Bool=true,dumpfile::String="", kwargs...)
+function plot_dq_dependence_multiplets(lab:: LabSystem, dq_values::Vector{<:Real}, q_beam :: Real, to_multiplets::Vector{<:Integer}; new_figure:: Bool=true,dumpfile::String="")
     # unique energies
     unique_energies,indices=multiplets(lab.eigensys)
     # calc I vs theta for multiplets
