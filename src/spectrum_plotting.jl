@@ -24,8 +24,9 @@ function plot_spectrum(
     end
 
     # plot the spectrum
+    I=[intensity(spectrum, omega) for omega in energies]
     plot(
-        energies, [intensity(spectrum, omega) for omega in energies],
+        energies, I,
         label=plot_label, color=plot_color
     )
 
@@ -58,7 +59,43 @@ function plot_spectrum(
     if show_figure
         show()
     end
+    # return RIXS intensities
+    return I
 end
 
 # export functions
 export plot_spectrum
+
+# function save spectrum
+function save_spectrum_theta(
+    lab :: LabSystem,
+    energies    :: Vector{<:Real},
+    intensities :: Vector{<:Real},
+    theta:: Real, 
+    twotheta :: Real, 
+    dQ :: Real,
+    filename :: String
+)
+    # open file
+    f = open(filename*".txt", "w")
+    # write header line hamiltonian
+    lines = split(string(lab.hamiltonian), "\n")
+    for l in lines
+        print(f,"# ",l, "\n")
+    end
+    # write header with multiplet energies
+    print(f, "# RIXS intensity (arb. units) as a function of energy loss \n")
+    print(f, "# theta=$(theta), twotheta=$(twotheta), dQ= $(dQ) \n#\n")
+    # write header line
+    hl = "# E \t I"
+    print(f, hl, "\n")
+    # write body
+    for i in 1:length(energies)
+        l = "$(energies[i])\t$(intensities[i])"
+        print(f, l, "\n")
+    end
+    # close file
+    close(f)  
+end
+# export functions
+export save_spectrum_theta
