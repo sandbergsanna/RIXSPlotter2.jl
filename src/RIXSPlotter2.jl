@@ -13,6 +13,7 @@ module RIXSPlotter2
     using PyPlot
     using LinearAlgebra
     using RIXSCalculator2
+    using Base.Threads
 
     # include files
     include("eigensystem_plotting.jl")
