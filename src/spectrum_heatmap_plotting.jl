@@ -7,7 +7,8 @@ function plot_spectrum_heatmap(
         lwidth      :: Real;
         new_figure  :: Bool = true,
         show_figure :: Bool = true,
-        dumpfile :: String=""
+        dumpfile :: String="",
+        parallel :: Bool=false
     )
 
     # configure the plot
@@ -17,13 +18,36 @@ function plot_spectrum_heatmap(
         xlabel("dq (pi)")
     end
     
-    # Calculate spectrum and intensities
+    # prepare vector for intensities
     intensities = zeros(length(energies),length(dq_values))
-    for i in 1:length(dq_values)
-        set_dQ!(lab, dq_values[i], q_beam)
-        recalculate!(lab)
-        spectrum=get_spectrum(lab;linewidth = lwidth)
-        intensities[:,i]=[intensity(spectrum, omega) for omega in energies]
+    # maybe parallellize
+    if parallel
+        # check how many threads available
+        if nthreads()==1
+            println("Note: Only 1 thread available!")
+        end
+        n_blas = BLAS.get_num_threads() # save the current BLAS thread count so we can restore it after
+        BLAS.set_num_threads(1) # set the number of threads for LiearAlgebra, to avoid oversubscription
+        # create one independent copy of op per thread -- set_parameter! and recalculate! mutate the operator in place
+        lab_copies = [deepcopy(lab) for _ in 1:nthreads()]
+        # Calculate spectrum and intensities
+        @threads for i in 1:length(dq_values)
+            lab_t = lab_copies[threadid()] # temporary labsystem
+            set_dQ!(lab_t, dq_values[i], q_beam)
+            recalculate_dipole_operators!(lab_t)
+            spectrum=get_spectrum(lab_t;linewidth = lwidth)
+            intensities[:,i]=[intensity(spectrum, omega) for omega in energies]
+        end
+        # restore BLAS threads so we don't affect other code outside this function
+        BLAS.set_num_threads(n_blas)
+    else
+        # Calculate spectrum and intensities
+        for i in 1:length(dq_values)
+            set_dQ!(lab, dq_values[i], q_beam)
+            recalculate_dipole_operators!(lab)
+            spectrum=get_spectrum(lab;linewidth = lwidth)
+            intensities[:,i]=[intensity(spectrum, omega) for omega in energies]
+        end
     end
 
     # plot the spectrum
@@ -88,7 +112,8 @@ function plot_spectrum_heatmap(
         unit_l      :: Real;
         new_figure  :: Bool = true,
         show_figure :: Bool = true,
-        dumpfile :: String=""
+        dumpfile :: String="",
+        parallel :: Bool=false
     )
 
     # configure the plot
@@ -98,13 +123,36 @@ function plot_spectrum_heatmap(
         xlabel("dq (L)",fontsize=15)
     end
     
-    # Calculate spectrum and intensities
+    # prepare vector for intensities
     intensities = zeros(length(energies),length(dq_values))
-    for i in 1:length(dq_values)
-        set_dQ!(lab, dq_values[i], q_beam)
-        recalculate!(lab)
-        spectrum=get_spectrum(lab;linewidth = lwidth)
-        intensities[:,i]=[intensity(spectrum, omega) for omega in energies]
+    # maybe parallellize
+    if parallel
+        # check how many threads available
+        if nthreads()==1
+            println("Note: Only 1 thread available!")
+        end
+        n_blas = BLAS.get_num_threads() # save the current BLAS thread count so we can restore it after
+        BLAS.set_num_threads(1) # set the number of threads for LiearAlgebra, to avoid oversubscription
+        # create one independent copy of op per thread -- set_parameter! and recalculate! mutate the operator in place
+        lab_copies = [deepcopy(lab) for _ in 1:nthreads()]
+        # Calculate spectrum and intensities
+        @threads for i in 1:length(dq_values)
+            lab_t = lab_copies[threadid()] # temporary labsystem
+            set_dQ!(lab_t, dq_values[i], q_beam)
+            recalculate_dipole_operators!(lab_t)
+            spectrum=get_spectrum(lab_t;linewidth = lwidth)
+            intensities[:,i]=[intensity(spectrum, omega) for omega in energies]
+        end
+        # restore BLAS threads so we don't affect other code outside this function
+        BLAS.set_num_threads(n_blas)
+    else
+        # Calculate spectrum and intensities
+        for i in 1:length(dq_values)
+            set_dQ!(lab, dq_values[i], q_beam)
+            recalculate_dipole_operators!(lab)
+            spectrum=get_spectrum(lab;linewidth = lwidth)
+            intensities[:,i]=[intensity(spectrum, omega) for omega in energies]
+        end
     end
 
     # plot the spectrum
