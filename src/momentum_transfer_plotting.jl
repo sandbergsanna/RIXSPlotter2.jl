@@ -271,11 +271,34 @@ end
 export plot_dq_dependence
 
 # Function that plots the theta dependence of given multiplets
-function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{<:Real}, twotheta :: Real, dQ :: Real, to_multiplets::Vector{<:Integer}; new_figure:: Bool=true,dumpfile::String="")
+function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{<:Real}, twotheta :: Real, dQ :: Real, to_multiplets::Vector{<:Integer}; new_figure:: Bool=true,dumpfile::String="",parallel:: Bool=false)
     # unique energies
     unique_energies,indices=multiplets(lab.eigensys)
-    # calc I vs theta for multiplets
-    I=[theta_dependence_multiplet(lab,theta_values,twotheta,dQ,i) for i in to_multiplets]
+    # prepare vector for intensities
+    I = zeros(length(theta_values),length(to_multiplets))
+    # maybe parallellize
+    if parallel
+        # check how many threads available
+        if nthreads()==1
+            println("Note: Only 1 thread available!")
+        end
+        n_blas = BLAS.get_num_threads() # save the current BLAS thread count so we can restore it after
+        BLAS.set_num_threads(1) # set the number of threads for LiearAlgebra, to avoid oversubscription
+        # create one independent copy of op per thread -- set_parameter! and recalculate! mutate the operator in place
+        lab_copies = [deepcopy(lab) for _ in 1:nthreads()]
+        # calc I vs theta for multiplets
+        @threads for i in 1:length(to_multiplets)
+            lab_t = lab_copies[threadid()] # temporary labsystem
+            I[:,i]=theta_dependence_multiplet(lab_t,theta_values,twotheta,dQ,i)
+        end
+        # restore BLAS threads so we don't affect other code outside this function
+        BLAS.set_num_threads(n_blas)
+    else
+        # calc I vs theta for multiplets
+        for i in 1:length(to_multiplets)
+            I[:,i]=theta_dependence_multiplet(lab,theta_values,twotheta,dQ,i)
+        end
+    end
     # if new figure
     if new_figure
         figure()
@@ -290,7 +313,7 @@ function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{
     end
     # plot
     for i in eachindex(to_multiplets)
-        plot(theta_values,I[i],label="E=$(round(unique_energies[to_multiplets[i]]-unique_energies[1]))")
+        plot(theta_values,I[:,i],label="E=$(round(unique_energies[to_multiplets[i]]-unique_energies[1]))")
     end
     # legend
     legend()
@@ -332,11 +355,35 @@ end
 export plot_theta_dependence_multiplets
 
 # Function that plots the dq dependence of given multiplets
-function plot_dq_dependence_multiplets(lab:: LabSystem, dq_values::Vector{<:Real}, q_beam :: Real, to_multiplets::Vector{<:Integer}; new_figure:: Bool=true,dumpfile::String="")
+function plot_dq_dependence_multiplets(lab:: LabSystem, dq_values::Vector{<:Real}, q_beam :: Real, to_multiplets::Vector{<:Integer}; new_figure:: Bool=true,dumpfile::String="", parallel::Bool=false)
     # unique energies
     unique_energies,indices=multiplets(lab.eigensys)
-    # calc I vs theta for multiplets
-    I=[dq_dependence_multiplet(lab,dq_values,q_beam,i) for i in to_multiplets]
+
+    # prepare vector for intensities
+    I = zeros(length(dq_values),length(to_multiplets))
+    # maybe parallellize
+    if parallel
+        # check how many threads available
+        if nthreads()==1
+            println("Note: Only 1 thread available!")
+        end
+        n_blas = BLAS.get_num_threads() # save the current BLAS thread count so we can restore it after
+        BLAS.set_num_threads(1) # set the number of threads for LiearAlgebra, to avoid oversubscription
+        # create one independent copy of op per thread -- set_parameter! and recalculate! mutate the operator in place
+        lab_copies = [deepcopy(lab) for _ in 1:nthreads()]
+        # calc I vs dq for multiplets
+        @threads for i in 1:length(to_multiplets)
+            lab_t = lab_copies[threadid()] # temporary labsystem
+            I[:,i]=dq_dependence_multiplet(lab_t,dq_values,q_beam,i)
+        end
+        # restore BLAS threads so we don't affect other code outside this function
+        BLAS.set_num_threads(n_blas)
+    else
+        # calc I vs dq for multiplets
+        for i in 1:length(to_multiplets)
+            I[:,i]=dq_dependence_multiplet(lab,dq_values,q_beam,i)
+        end
+    end
     # if new figure
     if new_figure
         figure()
@@ -351,7 +398,7 @@ function plot_dq_dependence_multiplets(lab:: LabSystem, dq_values::Vector{<:Real
     end
     # plot
     for i in eachindex(to_multiplets)
-        plot(dq_values./pi,I[i],label="E=$(round(unique_energies[to_multiplets[i]]-unique_energies[1]))")
+        plot(dq_values./pi,I[:,i],label="E=$(round(unique_energies[to_multiplets[i]]-unique_energies[1]))")
     end
     # legend
     legend()
