@@ -269,34 +269,88 @@ end
 export show_energy_evolution_multiple_sites
 
 # energy evolution - panel plot with energy evolution for multiple parameters
-function show_energy_evolution_panelplot(op :: AbstractOperator, parameters :: Vector{Symbol}, param_values :: Vector{<:Vector{<:Number}}; subtract_GS:: Bool =true, new_figure:: Bool=true ,color ::String ="k")
-    # get parameters
-    ba_params = [get_parameter(op, param,site=:all) for param in parameters];
+function show_energy_evolution_panelplot(op :: AbstractOperator, parameters :: Vector{Symbol}, param_values :: Vector{<:Vector{<:Number}}; subtract_GS:: Bool =true, new_figure:: Bool=true ,color ::String ="k", parallel :: Bool=false)
     # length parameters stacked
     param_vec=collect(range(1, stop=sum([length(param_values[i]) for i in eachindex(param_values)]), step=1))
     # E_vec - bands
     bands = [zeros(length(param_vec)) for i in 1:length(energies(op))]
-    # SWEEP PARAMETERS
-    i=1
-    for n in eachindex(param_values)
-        for k in 1:length(param_values[n])
-            # set parameter
-            set_parameter!(op, parameters[n],  param_values[n][k]; recalculate=true, site=:all)
-            # eval energies
-            evals = energies(op)
-            # save energies
-            for j in 1:length(evals)
-                bands[j][i] = evals[j]
+    # maybe parallelize
+    if parallel
+        # check how many threads available
+        if nthreads()==1
+            println("Note: Only 1 thread available!")
+        end
+        n_blas = BLAS.get_num_threads() # save the current BLAS thread count so we can restore it after
+        BLAS.set_num_threads(1) # set the number of threads for LiearAlgebra, to avoid oversubscription
+        # Sweep parameter values and calculate energies
+        n_offset = 0
+        for n in eachindex(param_values)
+            # build a fresh baseline op for this panel: previous parameters at their final value, following at baseline
+            op_baseline = deepcopy(op)
+            # m<n (previous panel parameters)
+            for m in 1:(n-1)
+                set_parameter!(op_baseline, parameters[m],  param_values[m][end]; recalculate=true, site=:all)
             end
-            # subtract GS?
-            if subtract_GS
+            # m>n (following panel parameters)
+            for m in (n+1):length(parameters)
+                set_parameter!(op_baseline, parameters[m],  param_values[m][1]; recalculate=true, site=:all)
+            end
+            # create per-thread copies from this correctly-initialized baseline
+            op_copies = [deepcopy(op_baseline) for _ in 1:nthreads()]
+            # sweep panel
+            @threads for k in 1:length(param_values[n])
+                op_t = op_copies[threadid()] # temporary operator
+                # set current panel parameter
+                set_parameter!(op_t, parameters[n],  param_values[n][k]; recalculate=true, site=:all)
+                # eval energies
+                evals = energies(op_t)
+                # save energies
+                i = n_offset + k  # correct global index for this (n, k) pair
                 for j in 1:length(evals)
-                    bands[j][i] -= evals[1]
+                    bands[j][i] = evals[j]
+                end
+                # subtract GS?
+                if subtract_GS
+                    for j in 1:length(evals)
+                        bands[j][i] -= evals[1]
+                    end
                 end
             end
-        i+=1
+            n_offset += length(param_values[n])
         end
+        # restore BLAS threads so we don't affect other code outside this function
+        BLAS.set_num_threads(n_blas)
+    else
+        # get parameters
+        ba_params = [get_parameter(op, param,site=:all) for param in parameters];
+        # Sweep parameter values and calculate energies
+        n_offset = 0
+        for n in eachindex(param_values)
+            for k in 1:length(param_values[n])
+                # set parameter
+                set_parameter!(op, parameters[n],  param_values[n][k]; recalculate=true, site=:all)
+                # eval energies
+                evals = energies(op)
+                # save energies
+                i = n_offset + k  # correct global index for this (n, k) pair
+                for j in 1:length(evals)
+                    bands[j][i] = evals[j]
+                end
+                # subtract GS?
+                if subtract_GS
+                    for j in 1:length(evals)
+                        bands[j][i] -= evals[1]
+                    end
+                end
+            end
+            n_offset += length(param_values[n])
+        end
+        #reset parameters
+        for i in eachindex(parameters)
+            set_parameter!(op, parameters[i],ba_params[i]; recalculate=true,site=:all);
+        end 
     end
+    # new figure?
     if new_figure
         # plotting
         figure()
@@ -325,11 +379,7 @@ function show_energy_evolution_panelplot(op :: AbstractOperator, parameters :: V
     # plot
     for b in bands
         plot(param_vec, b,c=color)
-    end
-    #reset parameters
-    for i in eachindex(parameters)
-        set_parameter!(op, parameters[i],ba_params[i]; recalculate=true,site=:all);
-    end  
+    end 
 end
 export show_energy_evolution_panelplot
 
