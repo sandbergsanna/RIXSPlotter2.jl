@@ -21,5 +21,6 @@ module RIXSPlotter2
     include("spectrum_plotting.jl")
     include("spectrum_heatmap_plotting.jl")
     include("momentum_transfer_plotting.jl")
+    include("mean_square_error_plotting.jl")
 
 end
