@@ -5,8 +5,10 @@ function plot_spectrum_heatmap(
         q_beam      :: Real,
         energies    :: Vector{<:Real},
         lwidth      :: Real;
+        unit_l      :: Real = 0,
         new_figure  :: Bool = true,
         show_figure :: Bool = true,
+        fontsize :: Real = 12,
         dumpfile :: String="",
         parallel :: Bool=false
     )
@@ -14,8 +16,12 @@ function plot_spectrum_heatmap(
     # configure the plot
     if new_figure
         figure()
-        ylabel("Energy (meV)")
-        xlabel("dq (pi)")
+        ylabel("Energy (meV)",fontsize=fontsize)
+        if unit_l==0
+            xlabel("dq (pi)",fontsize=fontsize)
+        else
+            xlabel("dq (L)",fontsize=fontsize)
+        end
     end
     
     # prepare vector for intensities
@@ -28,11 +34,9 @@ function plot_spectrum_heatmap(
         end
         n_blas = BLAS.get_num_threads() # save the current BLAS thread count so we can restore it after
         BLAS.set_num_threads(1) # set the number of threads for LiearAlgebra, to avoid oversubscription
-        # create one independent copy of op per thread -- set_parameter! and recalculate! mutate the operator in place
-        lab_copies = [deepcopy(lab) for _ in 1:nthreads()]
         # Calculate spectrum and intensities
         @threads for i in 1:length(dq_values)
-            lab_t = lab_copies[threadid()] # temporary labsystem
+            lab_t = deepcopy(lab) # temporary labsystem
             set_dQ!(lab_t, dq_values[i], q_beam)
             recalculate_dipole_operators!(lab_t)
             spectrum=get_spectrum(lab_t;linewidth = lwidth)
@@ -54,11 +58,15 @@ function plot_spectrum_heatmap(
     heatmap=imshow(intensities,cmap="Spectral_r",origin="lower")
     cbar=colorbar(heatmap)
     cbar.set_ticks(ticks=[minimum(intensities),maximum(intensities)/2,maximum(intensities)], labels=[0,0.5,1])
-    cbar.ax.tick_params(labelsize=15,direction="in")
+    cbar.ax.tick_params(labelsize=fontsize,direction="in")
 
     # set the x and y ticks
-    yticks(collect(range(0, stop=length(energies)-1, length=5)),[round(E,digits=1) for E in collect(range(energies[1],stop=energies[end],length=5))])
-    xticks(collect(range(0, stop=length(dq_values)-1, length=5)),[round(dq, digits=2) for dq in collect(range(dq_values[1]/pi,stop=dq_values[end]/pi,length=5))])
+    yticks(collect(range(0, stop=length(energies)-1, length=5)),[round(E,digits=1) for E in collect(range(energies[1],stop=energies[end],length=5))],fontsize=fontsize)
+    if unit_l==0
+        xticks(collect(range(0, stop=length(dq_values)-1, length=5)),[round(dq, digits=2) for dq in collect(range(dq_values[1]/pi,stop=dq_values[end]/pi,length=5))],fontsize=fontsize)
+    else
+        xticks(collect(range(0, stop=length(dq_values)-1, length=5)),[round(dq, digits=1) for dq in collect(range(dq_values[1]*unit_l/pi,stop=dq_values[end]*unit_l/pi,length=5))],fontsize=fontsize)
+    end
 
     # tighten the layout
     #tight_layout()
@@ -72,7 +80,7 @@ function plot_spectrum_heatmap(
         # open file 
         f = open(dumpfile, "w")
         # write header line
-        lines = split(string(lab1.hamiltonian), "\n")
+        lines = split(string(lab.hamiltonian), "\n")
         for l in lines
             print(f,"# ",l, "\n")
         end
@@ -81,114 +89,23 @@ function plot_spectrum_heatmap(
         print(f,"# RIXS intensities have been rescaled by dividing by the maximum intensity: $(maximum(intensities)) \n")
         print(f, "# linewidth: $(lwidth)\n#\n")
         print(f, "# - First column: Energy (meV) \n")
-        print(f, "# - First row: dq (pi) \n")
+        if unit_l==0
+            print(f, "# - First row: dq (pi) \n")
+        else
+            print(f, "# - First row: (0 0 l) (r.l.u.) \n")
+        end
         print(f,"# - Remaining matrix: RIXS intensity (arb. units) \n#\n")
         # write first line
-        l = "Energy/dq"
-        for i in 1:length(dq_values)
-            l=l*"\t$(dq_values[i]/pi)"
-        end
-        print(f,l,"\n")
-        # write body
-        for i in 1:length(energies)
-            l="$(energies[i])"
-            for j in 1:length(dq_values)
-                l=l*"\t$(intensities[i,j]/maximum(intensities))"
+        if unit_l==0
+            l = "Energy/dq"
+            for i in 1:length(dq_values)
+                l=l*"\t$(dq_values[i]/pi)"
             end
-            print(f, l,"\n")
-        end
-        # close file
-        close(f)
-    end
-end
-
-# Spectrum 2D heatmap plotting function, energy vs momentum transfer, unit l 
-function plot_spectrum_heatmap(
-        lab         :: LabSystem,
-        dq_values   :: Vector{<:Real},
-        q_beam      :: Real,
-        energies    :: Vector{<:Real},
-        lwidth      :: Real,
-        unit_l      :: Real;
-        new_figure  :: Bool = true,
-        show_figure :: Bool = true,
-        dumpfile :: String="",
-        parallel :: Bool=false
-    )
-
-    # configure the plot
-    if new_figure
-        figure()
-        ylabel("Energy (meV)",fontsize=15)
-        xlabel("dq (L)",fontsize=15)
-    end
-    
-    # prepare vector for intensities
-    intensities = zeros(length(energies),length(dq_values))
-    # maybe parallellize
-    if parallel
-        # check how many threads available
-        if nthreads()==1
-            println("Note: Only 1 thread available!")
-        end
-        n_blas = BLAS.get_num_threads() # save the current BLAS thread count so we can restore it after
-        BLAS.set_num_threads(1) # set the number of threads for LiearAlgebra, to avoid oversubscription
-        # create one independent copy of op per thread -- set_parameter! and recalculate! mutate the operator in place
-        lab_copies = [deepcopy(lab) for _ in 1:nthreads()]
-        # Calculate spectrum and intensities
-        @threads for i in 1:length(dq_values)
-            lab_t = lab_copies[threadid()] # temporary labsystem
-            set_dQ!(lab_t, dq_values[i], q_beam)
-            recalculate_dipole_operators!(lab_t)
-            spectrum=get_spectrum(lab_t;linewidth = lwidth)
-            intensities[:,i]=[intensity(spectrum, omega) for omega in energies]
-        end
-        # restore BLAS threads so we don't affect other code outside this function
-        BLAS.set_num_threads(n_blas)
-    else
-        # Calculate spectrum and intensities
-        for i in 1:length(dq_values)
-            set_dQ!(lab, dq_values[i], q_beam)
-            recalculate_dipole_operators!(lab)
-            spectrum=get_spectrum(lab;linewidth = lwidth)
-            intensities[:,i]=[intensity(spectrum, omega) for omega in energies]
-        end
-    end
-
-    # plot the spectrum
-    heatmap=imshow(intensities,cmap="Spectral_r",origin="lower")
-    cbar=colorbar(heatmap)
-    cbar.set_ticks(ticks=[minimum(intensities),maximum(intensities)/2,maximum(intensities)], labels=[0,0.5,1])
-    cbar.ax.tick_params(labelsize=15,direction="in")
-
-    # set the x and y ticks
-    yticks(collect(range(0, stop=length(energies)-1, length=5)),[round(E,digits=1) for E in collect(range(energies[1],stop=energies[end],length=5))])
-    xticks(collect(range(0, stop=length(dq_values)-1, length=5)),[round(dq, digits=1) for dq in collect(range(dq_values[1]*unit_l/pi,stop=dq_values[end]*unit_l/pi,length=5))])
-
-    # show the plot
-    if show_figure
-        show()
-    end
-    # saving
-    if dumpfile != ""
-        # open file 
-        f = open(dumpfile, "w")
-        # write header line
-        lines = split(string(lab1.hamiltonian), "\n")
-        for l in lines
-            print(f,"# ",l, "\n")
-        end
-        # write out q_beam and intensities
-        print(f, "# RIXS intensity heatmap \n")
-        print(f,"# RIXS intensities have been rescaled by dividing by the maximum intensity: $(maximum(intensities)) \n")
-        print(f, "# linewidth: $(lwidth)\n#\n")
-        print(f, "# - First column: Energy (meV) \n")
-        print(f, "# - First row: (0 0 l) (r.l.u.) \n")
-        print(f,"# - Remaining matrix: RIXS intensity (arb. units) \n#\n")
-        # write first line
-        l = "Energy/l"
-        for i in 1:length(dq_values)
-            l=l*"\t$(dq_values[i]*unit_l/pi)"
+        else
+            l = "Energy/l"
+            for i in 1:length(dq_values)
+                l=l*"\t$(dq_values[i]*unit_l/pi)"
+            end
         end
         print(f,l,"\n")
         # write body

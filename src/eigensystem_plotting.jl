@@ -10,6 +10,21 @@ function show_operator(op :: AbstractOperator)
 end
 export show_operator
 
+function _show_energy_evolution(op :: AbstractOperator, parameter::Symbol, value:: Real; site=:all, subtract_GS::Bool = false)
+    # set parameter
+    set_parameter!(op, parameter, value;  recalculate=true, site=site)
+    # get energies
+    evals = energies(op)
+    # maybe subtract GS_energy
+    if subtract_GS
+        GS_energy=evals[1]
+        for j in 1:length(evals)
+            evals[j] -= GS_energy
+        end
+    end
+    # return 
+    return evals
+end
 
 function show_energy_evolution(op :: AbstractOperator, parameter::Symbol, values; site=:all, subtract_GS::Bool = false, figsize::Tuple=(8,5), new_figure=true, dumpfile::String="", color="b", parallel::Bool=false, kwargs...)
     if new_figure
@@ -25,34 +40,24 @@ function show_energy_evolution(op :: AbstractOperator, parameter::Symbol, values
         end
         n_blas = BLAS.get_num_threads() # save the current BLAS thread count so we can restore it after
         BLAS.set_num_threads(1) # set the number of threads for LiearAlgebra, to avoid oversubscription
-        # create one independent copy of op per thread -- set_parameter! and recalculate! mutate the operator in place
-        op_copies = [deepcopy(op) for _ in 1:nthreads()]
+        # sweep parameters using multi-threading
         @threads for i in 1:length(values)
-            op_t = op_copies[threadid()] # temporary operator
-            set_parameter!(op_t, parameter, values[i];  recalculate=true, site=site)
-            evals = energies(op_t)
+            op_t=deepcopy(op)
+            # calc energies and maybe subtract GS energy
+            evals = _show_energy_evolution(op_t,parameter,values[i],site=site,subtract_GS=subtract_GS)
             for j in 1:length(evals)
                 bands[j][i] = evals[j]
-            end
-            if subtract_GS
-                for j in 1:length(evals)
-                    bands[j][i] -= evals[1]
-                end
             end
         end
         # restore BLAS threads so we don't affect other code outside this function
         BLAS.set_num_threads(n_blas)
     else
+        # sweep parameters
         for i in 1:length(values)
-            set_parameter!(op, parameter, values[i];  recalculate=true, site=site)
-            evals = energies(op)
+            # calc energies and maybe subtract GS energy
+            evals = _show_energy_evolution(op,parameter,values[i],site=site,subtract_GS=subtract_GS)
             for j in 1:length(evals)
                 bands[j][i] = evals[j]
-            end
-            if subtract_GS
-                for j in 1:length(evals)
-                    bands[j][i] -= evals[1]
-                end
             end
         end
     end
@@ -167,6 +172,24 @@ function show_energy_evolution_with_parameters(op :: AbstractOperator, parameter
 end
 export show_energy_evolution_with_parameters
 
+function _show_energy_evolution_multiple_sites(op :: AbstractOperator, parameter::Symbol, value:: Real, sites :: Vector{Int64}; subtract_GS::Bool = false)
+    # Set parameter for given sites
+    for s in 1:length(sites)
+        set_parameter!(op, parameter, value; recalculate=true, site=sites[s])
+    end
+    # get energies
+    evals = energies(op)
+    # maybe subtract GS_energy
+    if subtract_GS
+        GS_energy=evals[1]
+        for j in 1:length(evals)
+            evals[j] -= GS_energy
+        end
+    end
+    # return 
+    return evals
+end
+
 function show_energy_evolution_multiple_sites(op :: AbstractOperator, parameter::Symbol, values, sites :: Vector{Int64}; subtract_GS::Bool = false, figsize::Tuple=(8,5), new_figure=true, dumpfile::String="", color="b", parallel::Bool=false, kwargs...)
     if new_figure
         figure(figsize=figsize)
@@ -185,24 +208,13 @@ function show_energy_evolution_multiple_sites(op :: AbstractOperator, parameter:
         end
         n_blas = BLAS.get_num_threads() # save the current BLAS thread count so we can restore it after
         BLAS.set_num_threads(1) # set the number of threads for LiearAlgebra, to avoid oversubscription
-        # create one independent copy of op per thread -- set_parameter! and recalculate! mutate the operator in place
-        op_copies = [deepcopy(op) for _ in 1:nthreads()]
         # Sweep parameter values and calculate energies
         @threads for i in 1:length(values)
-            op_t = op_copies[threadid()] # temporary operator
-            # Set parameter for given sites
-            for s in 1:length(sites)
-                set_parameter!(op_t, parameter, values[i]; recalculate=true, site=sites[s])
-            end
+            op_t = deepcopy(op) # temporary operator
             # Calculate and collect energies
-            evals = energies(op_t)
+            evals = _show_energy_evolution_multiple_sites(op_t,parameter,values[i],sites,subtract_GS=subtract_GS)
             for j in 1:length(evals)
                 bands[j][i] = evals[j]
-            end
-            if subtract_GS
-                for j in 1:length(evals)
-                    bands[j][i] -= evals[1]
-                end
             end
         end
         # restore BLAS threads so we don't affect other code outside this function
@@ -210,19 +222,10 @@ function show_energy_evolution_multiple_sites(op :: AbstractOperator, parameter:
     else
         # Sweep parameter values and calculate energies
         for i in 1:length(values)
-            # Set parameter for given sites
-            for s in 1:length(sites)
-                set_parameter!(op, parameter, values[i]; recalculate=true, site=sites[s])
-            end
             # Calculate and collect energies
-            evals = energies(op)
+            evals = _show_energy_evolution_multiple_sites(op,parameter,values[i],sites,subtract_GS=subtract_GS)
             for j in 1:length(evals)
                 bands[j][i] = evals[j]
-            end
-            if subtract_GS
-                for j in 1:length(evals)
-                    bands[j][i] -= evals[1]
-                end
             end
         end
     end
@@ -295,25 +298,15 @@ function show_energy_evolution_panelplot(op :: AbstractOperator, parameters :: V
             for m in (n+1):length(parameters)
                 set_parameter!(op_baseline, parameters[m],  param_values[m][1]; recalculate=true, site=:all)
             end
-            # create per-thread copies from this correctly-initialized baseline
-            op_copies = [deepcopy(op_baseline) for _ in 1:nthreads()]
             # sweep panel
             @threads for k in 1:length(param_values[n])
-                op_t = op_copies[threadid()] # temporary operator
-                # set current panel parameter
-                set_parameter!(op_t, parameters[n],  param_values[n][k]; recalculate=true, site=:all)
-                # eval energies
-                evals = energies(op_t)
+                op_t = deepcopy(op_baseline) # temporary operator
+                # eval and collect energies, maybe subtract GS
+                evals=_show_energy_evolution(op_t,parameters[n],param_values[n][k],site=:all,subtract_GS=subtract_GS)
                 # save energies
                 i = n_offset + k  # correct global index for this (n, k) pair
                 for j in 1:length(evals)
                     bands[j][i] = evals[j]
-                end
-                # subtract GS?
-                if subtract_GS
-                    for j in 1:length(evals)
-                        bands[j][i] -= evals[1]
-                    end
                 end
             end
             n_offset += length(param_values[n])
@@ -327,20 +320,12 @@ function show_energy_evolution_panelplot(op :: AbstractOperator, parameters :: V
         n_offset = 0
         for n in eachindex(param_values)
             for k in 1:length(param_values[n])
-                # set parameter
-                set_parameter!(op, parameters[n],  param_values[n][k]; recalculate=true, site=:all)
-                # eval energies
-                evals = energies(op)
+                # eval and collect energies, maybe subtract GS
+                evals=_show_energy_evolution(op,parameters[n],param_values[n][k],site=:all,subtract_GS=subtract_GS)
                 # save energies
                 i = n_offset + k  # correct global index for this (n, k) pair
                 for j in 1:length(evals)
                     bands[j][i] = evals[j]
-                end
-                # subtract GS?
-                if subtract_GS
-                    for j in 1:length(evals)
-                        bands[j][i] -= evals[1]
-                    end
                 end
             end
             n_offset += length(param_values[n])

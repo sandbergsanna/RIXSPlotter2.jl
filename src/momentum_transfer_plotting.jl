@@ -284,11 +284,9 @@ function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{
         end
         n_blas = BLAS.get_num_threads() # save the current BLAS thread count so we can restore it after
         BLAS.set_num_threads(1) # set the number of threads for LiearAlgebra, to avoid oversubscription
-        # create one independent copy of op per thread -- set_parameter! and recalculate! mutate the operator in place
-        lab_copies = [deepcopy(lab) for _ in 1:nthreads()]
         # calc I vs theta for multiplets
         @threads for i in 1:length(to_multiplets)
-            lab_t = lab_copies[threadid()] # temporary labsystem
+            lab_t = deepcopy(lab) # temporary labsystem
             I[:,i]=theta_dependence_multiplet(lab_t,theta_values,twotheta,dQ,i)
         end
         # restore BLAS threads so we don't affect other code outside this function
@@ -369,11 +367,9 @@ function plot_dq_dependence_multiplets(lab:: LabSystem, dq_values::Vector{<:Real
         end
         n_blas = BLAS.get_num_threads() # save the current BLAS thread count so we can restore it after
         BLAS.set_num_threads(1) # set the number of threads for LiearAlgebra, to avoid oversubscription
-        # create one independent copy of op per thread -- set_parameter! and recalculate! mutate the operator in place
-        lab_copies = [deepcopy(lab) for _ in 1:nthreads()]
         # calc I vs dq for multiplets
         @threads for i in 1:length(to_multiplets)
-            lab_t = lab_copies[threadid()] # temporary labsystem
+            lab_t = deepcopy(lab) # temporary labsystem
             I[:,i]=dq_dependence_multiplet(lab_t,dq_values,q_beam,i)
         end
         # restore BLAS threads so we don't affect other code outside this function

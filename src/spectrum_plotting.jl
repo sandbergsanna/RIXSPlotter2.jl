@@ -96,11 +96,9 @@ function plot_spectrum(
         end
         n_blas = BLAS.get_num_threads() # save the current BLAS thread count so we can restore it after
         BLAS.set_num_threads(1) # set the number of threads for LiearAlgebra, to avoid oversubscription
-        # create one independent copy of op per thread -- set_parameter! and recalculate! mutate the operator in place
-        lab_copies = [deepcopy(lab) for _ in 1:nthreads()]
         # Calculate spectrum and intensities
         @threads for i in 1:length(dq_values)
-            lab_t = lab_copies[threadid()] # temporary labsystem
+            lab_t = deepcopy(lab) # temporary labsystem
             set_dQ!(lab_t, dq_values[i], q_beam)
             recalculate_dipole_operators!(lab_t)
             spectrums[i]=get_spectrum(lab_t;linewidth = linewidth)
@@ -212,11 +210,9 @@ function plot_spectrum(
         end
         n_blas = BLAS.get_num_threads() # save the current BLAS thread count so we can restore it after
         BLAS.set_num_threads(1) # set the number of threads for LiearAlgebra, to avoid oversubscription
-        # create one independent copy of op per thread -- set_parameter! and recalculate! mutate the operator in place
-        lab_copies = [deepcopy(lab) for _ in 1:nthreads()]
         # Calculate spectrum and intensities
         @threads for i in 1:length(theta_values)
-            lab_t = lab_copies[threadid()] # temporary labsystem
+            lab_t = deepcopy(lab) # temporary labsystem
             set_scattering_angles_deg!(lab_t, theta_values[i],twotheta, dQ)
             recalculate_dipole_operators!(lab_t)
             spectrums[i]=get_spectrum(lab_t;linewidth = linewidth)
