@@ -147,3 +147,96 @@ function plot_mse(
 end
 # export 
 export plot_mse
+
+function plot_mse_animation(
+    lab :: LabSystem,
+    param1 :: Symbol,
+    param2 :: Symbol,
+    param3 :: Symbol,
+    param1_vec :: Vector{<:Real},
+    param2_vec :: Vector{<:Real},
+    param3_vec :: Vector{<:Real},
+    theta_values :: Vector{<:Real},
+    dQ :: Real,
+    twotheta :: Real,
+    lwidth :: Real,
+    energy_loss_exp :: Vector{<:Vector{<:Real}},
+    intensities_exp_norm :: Vector{<:Vector{<:Real}};
+    parallel :: Bool = false,
+    vmin = nothing,
+    vmax = nothing,
+    output_file :: String = "mse_animation.gif",  # ".gif", does not support mp4 at the moment
+    fps :: Int = 1
+    )
+    # save original param3
+    param3_init = get_parameter(lab.hamiltonian, param3, site=:all)
+    # pre-compute all MSE matrices first 
+    println("Computing MSE matrices...")
+    mse_frames = Vector{Matrix{Float64}}(undef, length(param3_vec))
+    for (n, p3) in enumerate(param3_vec)
+        println("  Frame $n / $(length(param3_vec)): $param3 = $p3")
+        set_parameter!(lab, param3, p3; site=:all, recalculate=true)
+        # compute MSE matrix directly (without plotting)
+        mse_frames[n] = compute_mse(
+            lab, param1, param2,
+            param1_vec, param2_vec,
+            theta_values, dQ, twotheta, lwidth,
+            energy_loss_exp, intensities_exp_norm;
+            parallel=parallel
+        )
+    end
+
+    # restore original param3
+    set_parameter!(lab, param3, param3_init; site=:all, recalculate=true)
+
+    # determine color limits across all frames if not specified
+    global_vmin = isnothing(vmin) ? minimum(minimum.(mse_frames)) : vmin
+    global_vmax = isnothing(vmax) ? maximum(maximum.(mse_frames)) : vmax
+
+    println("Building animation...")
+    # set up figure
+    fig, ax = subplots(figsize=(6,5))
+    # initial frame
+    im = ax.imshow(
+        mse_frames[1],
+        origin="lower",
+        aspect="auto",
+        extent=[param1_vec[1], param1_vec[end], param2_vec[1], param2_vec[end]],
+        vmin=global_vmin, vmax=global_vmax,
+        cmap="Purples"
+    )
+    colorbar(im, ax=ax)
+    ax.set_xlabel(String(param1))
+    ax.set_ylabel(String(param2))
+    title_obj = ax.set_title("$param3 = $(round(param3_vec[1], digits=3))")
+    tight_layout()
+
+    # update function called for each frame
+    function update(n)
+        im.set_data(mse_frames[n+1])  # +1 because Python is 0-indexed
+        title_obj.set_text("$param3 = $(round(param3_vec[n+1], digits=3))")
+        return (im, title_obj)
+    end
+
+    # import animation
+    animation = pyimport("matplotlib.animation")
+    # create animation
+    anim = animation.FuncAnimation(
+        fig,
+        update,
+        frames=length(param3_vec),
+        interval=1000÷fps,  # milliseconds between frames
+        blit=true
+    )
+    # save
+    if endswith(output_file, ".gif")
+        anim.save(output_file, writer="pillow", fps=fps)
+    else
+        println("Only .gif format supported.")
+    end
+    println("Animation saved to: $output_file")
+    close(fig)
+    return anim
+end
+# export 
+export plot_mse_animation

@@ -13,7 +13,8 @@ module RIXSPlotter2
     using PyPlot
     using LinearAlgebra
     using RIXSCalculator2
-    using Base.Threads
+    using Base.Threads # for parallelising
+    using PyCall # for animation
 
     # include files
     include("eigensystem_plotting.jl")
