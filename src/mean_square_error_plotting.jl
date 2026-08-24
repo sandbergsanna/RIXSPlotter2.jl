@@ -165,8 +165,8 @@ function plot_mse_animation(
     parallel :: Bool = false,
     vmin = nothing,
     vmax = nothing,
-    output_file :: String = "mse_animation.gif",  # ".gif", does not support mp4 at the moment
-    fps :: Int = 1
+    output_file :: String = "mse_animation.mp4",  # ".gif" or ".mp4"
+    fps :: Real = 0.5
     )
     # save original param3
     param3_init = get_parameter(lab.hamiltonian, param3, site=:all)
@@ -231,8 +231,10 @@ function plot_mse_animation(
     # save
     if endswith(output_file, ".gif")
         anim.save(output_file, writer="pillow", fps=fps)
+    elseif endswith(output_file, ".mp4")
+        anim.save(output_file, writer="ffmpeg", fps=fps)
     else
-        println("Only .gif format supported.")
+        println("Only .gif and .mp4 format supported.")
     end
     println("Animation saved to: $output_file")
     close(fig)
