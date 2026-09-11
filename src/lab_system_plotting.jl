@@ -20,7 +20,8 @@ function plot_lab_system(
     color_list = [(rand(), rand(), rand()) for s in 1:length(ls.sites)]
 
     # make a new figure
-    figure(figsize=(6,6), dpi=dpi)
+    fig = figure(figsize=(6,6), dpi=dpi)
+    ax = fig.add_subplot(projection="3d")
 
     # plot all sites
     for s in 1:length(ls.sites)
@@ -203,7 +204,7 @@ function plot_lab_system(
     plot3D([e_out_start[1],e_out_end[1]], [e_out_start[2],e_out_end[2]], [e_out_start[3],e_out_end[3]], color=c_out,  alpha=1, lw=3)
     text3D((e_out_end .+ [0,0,0.2])..., "EPS_OUT_V", color=c_out, fontsize=12)
 
-    axis("off")
+    ax.set_axis_off()
 
 end
 export plot_lab_system
