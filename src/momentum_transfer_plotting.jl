@@ -350,6 +350,87 @@ function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{
         close(f)
     end
 end
+
+# Function that plots the theta dependence of given multiplets
+function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{<:Real}, twotheta_values :: Vector{<:Real}, dQ :: Real, to_multiplets::Vector{<:Integer}; new_figure:: Bool=true,dumpfile::String="",parallel:: Bool=false)
+    # unique energies
+    unique_energies,indices=multiplets(lab.eigensys)
+    # prepare vector for intensities
+    I = zeros(length(theta_values),length(to_multiplets))
+    # maybe parallellize
+    if parallel
+        # check how many threads available
+        if nthreads()==1
+            println("Note: Only 1 thread available!")
+        end
+        n_blas = BLAS.get_num_threads() # save the current BLAS thread count so we can restore it after
+        BLAS.set_num_threads(1) # set the number of threads for LiearAlgebra, to avoid oversubscription
+        # calc I vs theta for multiplets
+        @threads for i in 1:length(to_multiplets)
+            lab_t = deepcopy(lab) # temporary labsystem
+            I[:,i]=theta_dependence_multiplet(lab_t,theta_values,twotheta,dQ,i)
+        end
+        # restore BLAS threads so we don't affect other code outside this function
+        BLAS.set_num_threads(n_blas)
+    else
+        # calc I vs theta for multiplets
+        for i in 1:length(to_multiplets)
+            I[:,i]=theta_dependence_multiplet(lab,theta_values,twotheta_values,dQ,i)
+        end
+    end
+    # if new figure
+    if new_figure
+        figure()
+        # labels
+        ylabel("RIXS intensity (arb. units)",fontsize=15)
+        xlabel(L"\Theta (deg)",fontsize=15)
+        # ticks
+        minorticks_on()
+        tick_params(axis="both",which="both",labelsize=15,direction="in")
+        tick_params(axis="both", which="major",length=5)
+        tick_params(axis="both", which="minor",length=3)
+    end
+    # plot
+    for i in eachindex(to_multiplets)
+        plot(theta_values,I[:,i],label="E=$(round(unique_energies[to_multiplets[i]]-unique_energies[1]))")
+    end
+    # legend
+    legend()
+    # saving
+    if dumpfile != ""
+        # open file
+        f = open(dumpfile*".txt", "w")
+        # write header line hamiltonian
+        lines = split(string(lab.hamiltonian), "\n")
+        for l in lines
+            print(f,"# ",l, "\n")
+        end
+        # write header with multiplet energies
+        print(f, "# RIXS intensity (arb. units) for multiplets as a function of theta \n")
+        print(f, "# dQ= $(dQ) \n#\n")
+        el="# Multiplet energies: \n"
+        for i in to_multiplets
+            el=el*" \t$(round(unique_energies[i]-unique_energies[1]))"
+        end
+        print(f,el,"\n")
+        # write header line
+        hl = "# theta \t"
+        for i in to_multiplets
+            hl = hl * "\t I(E_$(i))"
+        end
+        print(f, hl, "\n")
+        # write body
+        for i in 1:length(theta_values)
+            l = "$(theta_values[i])"
+            for j in eachindex(to_multiplets)
+                l = l * "\t$(I[j][i])"
+            end
+            print(f, l, "\n")
+        end
+        # close file
+        close(f)
+    end
+end
 export plot_theta_dependence_multiplets
 
 # Function that plots the dq dependence of given multiplets
