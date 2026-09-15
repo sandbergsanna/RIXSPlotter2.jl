@@ -75,12 +75,17 @@ function plot_spectrum(
         plot_labels  :: Vector{<:Any} =[],
         plot_colors  :: Vector{<:Any} = [],
         plot_transitions :: Bool = false,
-        parallel :: Bool = false
+        parallel :: Bool = false, 
+        ax=nothing
     )
 
     # configure the plot
     if new_figure
-        figure()
+        if ax !== nothing
+            sca(ax)
+        else
+            figure()
+        end
         xlabel("energy [meV]")
         ylabel("intensity [a.u.]")
     end

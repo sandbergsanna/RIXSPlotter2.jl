@@ -272,7 +272,7 @@ end
 export show_energy_evolution_multiple_sites
 
 # energy evolution - panel plot with energy evolution for multiple parameters
-function show_energy_evolution_panelplot(op :: AbstractOperator, parameters :: Vector{Symbol}, param_values :: Vector{<:Vector{<:Number}}; subtract_GS:: Bool =true, new_figure:: Bool=true ,color ::String ="k", parallel :: Bool=false)
+function show_energy_evolution_panelplot(op :: AbstractOperator, parameters :: Vector{Symbol}, param_values :: Vector{<:Vector{<:Number}}; subtract_GS:: Bool =true, new_figure:: Bool=true ,color ::String ="k", parallel :: Bool=false, ax=nothing)
     # length parameters stacked
     param_vec=collect(range(1, stop=sum([length(param_values[i]) for i in eachindex(param_values)]), step=1))
     # E_vec - bands
@@ -338,7 +338,11 @@ function show_energy_evolution_panelplot(op :: AbstractOperator, parameters :: V
     # new figure?
     if new_figure
         # plotting
-        figure()
+        if ax !== nothing
+            sca(ax)
+        else
+            figure()
+        end
         # ylabel
         ylabel("Energy [meV]",fontsize=14)
         #lim
