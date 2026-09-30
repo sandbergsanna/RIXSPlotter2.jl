@@ -270,8 +270,22 @@ end
 # export the function
 export plot_dq_dependence
 
-# Function that plots the theta dependence of given multiplets
-function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{<:Real}, twotheta :: Real, dQ :: Real, to_multiplets::Vector{<:Integer}; new_figure:: Bool=true,dumpfile::String="",parallel:: Bool=false)
+"""
+    plot_theta_dependence_multiplets(
+        lab:: LabSystem,
+        theta_values::Vector{<:Real}, 
+        twotheta :: Real, 
+        q_beam :: Real, 
+        to_multiplets::Vector{<:Integer}; 
+        new_figure:: Bool=true,
+        dumpfile::String="",
+        parallel:: Bool=false
+    )
+
+Function that plots the theta dependence of given multiplets.
+q_beam is the magnitude of q_in and q_out.
+"""
+function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{<:Real}, twotheta :: Real, q_beam :: Real, to_multiplets::Vector{<:Integer}; new_figure:: Bool=true,dumpfile::String="",parallel:: Bool=false)
     # unique energies
     unique_energies,indices=multiplets(lab.eigensys)
     # prepare vector for intensities
@@ -287,14 +301,14 @@ function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{
         # calc I vs theta for multiplets
         @threads for i in 1:length(to_multiplets)
             lab_t = deepcopy(lab) # temporary labsystem
-            I[:,i]=theta_dependence_multiplet(lab_t,theta_values,twotheta,dQ,i)
+            I[:,i]=theta_dependence_multiplet(lab_t,theta_values,twotheta,q_beam,i)
         end
         # restore BLAS threads so we don't affect other code outside this function
         BLAS.set_num_threads(n_blas)
     else
         # calc I vs theta for multiplets
         for i in 1:length(to_multiplets)
-            I[:,i]=theta_dependence_multiplet(lab,theta_values,twotheta,dQ,i)
+            I[:,i]=theta_dependence_multiplet(lab,theta_values,twotheta,q_beam,i)
         end
     end
     # if new figure
@@ -326,7 +340,7 @@ function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{
         end
         # write header with multiplet energies
         print(f, "# RIXS intensity (arb. units) for multiplets as a function of theta \n")
-        print(f, "# dQ= $(dQ) \n#\n")
+        print(f, "# q_beam= $(q_beam) \n#\n")
         el="# Multiplet energies: \n"
         for i in to_multiplets
             el=el*" \t$(round(unique_energies[i]-unique_energies[1]))"
@@ -351,8 +365,22 @@ function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{
     end
 end
 
-# Function that plots the theta dependence of given multiplets
-function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{<:Real}, twotheta_values :: Vector{<:Real}, dQ :: Real, to_multiplets::Vector{<:Integer}; new_figure:: Bool=true,dumpfile::String="",parallel:: Bool=false)
+"""
+    plot_theta_dependence_multiplets(
+        lab:: LabSystem,
+        theta_values::Vector{<:Real}, 
+        twotheta_values :: Vector{<:Real}, 
+        q_beam :: Real, 
+        to_multiplets::Vector{<:Integer}; 
+        new_figure:: Bool=true,
+        dumpfile::String="",
+        parallel:: Bool=false
+    )
+
+Function that plots the RIXS intensities of given multiplets when varying theta and twotheta simultaneoulsy.
+q_beam is the magnitude of q_in and q_out.
+"""
+function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{<:Real}, twotheta_values :: Vector{<:Real}, q_beam :: Real, to_multiplets::Vector{<:Integer}; new_figure:: Bool=true,dumpfile::String="",parallel:: Bool=false)
     # unique energies
     unique_energies,indices=multiplets(lab.eigensys)
     # prepare vector for intensities
@@ -368,14 +396,14 @@ function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{
         # calc I vs theta for multiplets
         @threads for i in 1:length(to_multiplets)
             lab_t = deepcopy(lab) # temporary labsystem
-            I[:,i]=theta_dependence_multiplet(lab_t,theta_values,twotheta,dQ,i)
+            I[:,i]=theta_dependence_multiplet(lab_t,theta_values,twotheta,q_beam,i)
         end
         # restore BLAS threads so we don't affect other code outside this function
         BLAS.set_num_threads(n_blas)
     else
         # calc I vs theta for multiplets
         for i in 1:length(to_multiplets)
-            I[:,i]=theta_dependence_multiplet(lab,theta_values,twotheta_values,dQ,i)
+            I[:,i]=theta_dependence_multiplet(lab,theta_values,twotheta_values,q_beam,i)
         end
     end
     # if new figure
@@ -407,7 +435,7 @@ function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{
         end
         # write header with multiplet energies
         print(f, "# RIXS intensity (arb. units) for multiplets as a function of theta \n")
-        print(f, "# dQ= $(dQ) \n#\n")
+        print(f, "# q_beam= $(q_beam) \n#\n")
         el="# Multiplet energies: \n"
         for i in to_multiplets
             el=el*" \t$(round(unique_energies[i]-unique_energies[1]))"
@@ -433,7 +461,19 @@ function plot_theta_dependence_multiplets(lab:: LabSystem, theta_values::Vector{
 end
 export plot_theta_dependence_multiplets
 
-# Function that plots the dq dependence of given multiplets
+"""
+    plot_dq_dependence_multiplets(
+        lab:: LabSystem, 
+        dq_values::Vector{<:Real}, 
+        q_beam :: Real, 
+        to_multiplets::Vector{<:Integer}; 
+        new_figure:: Bool=true,
+        dumpfile::String="", 
+        parallel::Bool=false)
+
+Function that plots the dq dependence of given multiplets.
+q_beam is the magnitude of q_in and q_out.
+"""
 function plot_dq_dependence_multiplets(lab:: LabSystem, dq_values::Vector{<:Real}, q_beam :: Real, to_multiplets::Vector{<:Integer}; new_figure:: Bool=true,dumpfile::String="", parallel::Bool=false)
     # unique energies
     unique_energies,indices=multiplets(lab.eigensys)

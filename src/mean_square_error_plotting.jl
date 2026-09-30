@@ -16,7 +16,7 @@ function _compute_mse(
     param1_value :: Real,
     param2_value :: Real,
     theta_values :: Vector{<:Real},
-    dQ :: Real,
+    q_beam :: Real,
     twotheta :: Real,
     lwidth :: Real,
     energy_loss_exp :: Vector{<:Vector{<:Real}},
@@ -30,7 +30,7 @@ function _compute_mse(
     intensities_theory=[similar(energy_loss_exp[i]) for i in eachindex(theta_values)]
     for i in eachindex(theta_values)
         # set scattering angles
-        set_scattering_angles_deg!(lab, theta_values[i],twotheta, dQ)
+        set_scattering_angles_deg!(lab, theta_values[i],twotheta, q_beam)
         recalculate_dipole_operators!(lab)
         # get spectrum
         spectrum=get_spectrum(lab,;linewidth = lwidth)
@@ -55,7 +55,7 @@ function compute_mse(
     param1_vec :: Vector{<:Real},
     param2_vec :: Vector{<:Real},
     theta_values :: Vector{<:Real},
-    dQ :: Real,
+    q_beam :: Real,
     twotheta :: Real,
     lwidth :: Real,
     energy_loss_exp :: Vector{<:Vector{<:Real}},
@@ -79,7 +79,7 @@ function compute_mse(
             k, m = tasks[t]
             lab_t = deepcopy(lab)  # create a copy of lab
             # compute mean square errors
-            mean_square_error[m,k]=_compute_mse(lab_t,param1,param2,param1_vec[k],param2_vec[m],theta_values,dQ,twotheta,lwidth,energy_loss_exp,intensities_exp_norm)
+            mean_square_error[m,k]=_compute_mse(lab_t,param1,param2,param1_vec[k],param2_vec[m],theta_values,q_beam,twotheta,lwidth,energy_loss_exp,intensities_exp_norm)
         end
         # restore BLAS threads so we don't affect other code outside this function
         BLAS.set_num_threads(n_blas)  
@@ -91,7 +91,7 @@ function compute_mse(
         for k in eachindex(param1_vec)
             for m in eachindex(param2_vec)
                 # compute mean square errors
-                mean_square_error[m,k]=_compute_mse(lab,param1,param2,param1_vec[k],param2_vec[m],theta_values,dQ,twotheta,lwidth,energy_loss_exp,intensities_exp_norm)
+                mean_square_error[m,k]=_compute_mse(lab,param1,param2,param1_vec[k],param2_vec[m],theta_values,q_beam,twotheta,lwidth,energy_loss_exp,intensities_exp_norm)
             end
         end
         # reset parameters
@@ -131,7 +131,7 @@ function plot_mse(
     param1_vec :: Vector{<:Real},
     param2_vec :: Vector{<:Real},
     theta_values :: Vector{<:Real},
-    dQ :: Real,
+    q_beam :: Real,
     twotheta :: Real,
     lwidth :: Real,
     energy_loss_exp :: Vector{<:Vector{<:Real}},
@@ -141,7 +141,7 @@ function plot_mse(
     vmax = nothing
     )
     # compute mean square errors
-    mean_square_error=compute_mse(lab,param1,param2,param1_vec,param2_vec,theta_values,dQ,twotheta,lwidth,energy_loss_exp,intensities_exp_norm,parallel=parallel)
+    mean_square_error=compute_mse(lab,param1,param2,param1_vec,param2_vec,theta_values,q_beam,twotheta,lwidth,energy_loss_exp,intensities_exp_norm,parallel=parallel)
     # plot mean square error
     _plot_mse(mean_square_error,param1_vec,param2_vec,vmin=vmin,vmax=vmax)
 end
@@ -157,7 +157,7 @@ function plot_mse_animation(
     param2_vec :: Vector{<:Real},
     param3_vec :: Vector{<:Real},
     theta_values :: Vector{<:Real},
-    dQ :: Real,
+    q_beam :: Real,
     twotheta :: Real,
     lwidth :: Real,
     energy_loss_exp :: Vector{<:Vector{<:Real}},
@@ -180,7 +180,7 @@ function plot_mse_animation(
         mse_frames[n] = compute_mse(
             lab, param1, param2,
             param1_vec, param2_vec,
-            theta_values, dQ, twotheta, lwidth,
+            theta_values, q_beam, twotheta, lwidth,
             energy_loss_exp, intensities_exp_norm;
             parallel=parallel
         )
