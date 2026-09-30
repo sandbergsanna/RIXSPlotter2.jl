@@ -4,8 +4,19 @@
 #
 ################################################################################
 
+"""
+    function plot_spectrum(
+        spectrum    :: S,
+        energies    :: Vector{<:Real};
+        new_figure  :: Bool = true,
+        show_figure :: Bool = true,
+        plot_label  :: String = "",
+        plot_color  :: Any = "b",
+        plot_transitions :: Bool = false
+    ) where {T,S<:AbstractSpectrum{T}}
 
-# plot a spectrum that has been calculated before
+Plots a spectrum that has been calculated before.
+"""
 function plot_spectrum(
         spectrum    :: S,
         energies    :: Vector{<:Real};
@@ -63,7 +74,24 @@ function plot_spectrum(
     return I
 end
 
-# calc and plot spectrum
+"""
+    function plot_spectrum(
+        lab :: LabSystem,
+        energies    :: Vector{<:Real},
+        dq_values   :: Vector{<:Real},
+        q_beam      :: Real,
+        linewidth      :: Real;
+        new_figure  :: Bool = true,
+        show_figure :: Bool = true,
+        plot_labels  :: Vector{<:Any} =[],
+        plot_colors  :: Vector{<:Any} = [],
+        plot_transitions :: Bool = false,
+        parallel :: Bool = false
+    )
+
+Function that calculates and plots the spectrum given dq values (z-component of transferred momentum).
+q_beam is the magnitude of q_in and q_out.
+"""
 function plot_spectrum(
         lab :: LabSystem,
         energies    :: Vector{<:Real},
@@ -181,13 +209,31 @@ function plot_spectrum(
     return I
 end
 
-# calc and plot spectrum by setting scattering angles theta and twotheta in degrees
+"""
+    function plot_spectrum(
+        lab :: LabSystem,
+        energies    :: Vector{<:Real},
+        theta_values   :: Vector{<:Real},
+        twotheta :: Real,
+        q_beam      :: Real,
+        linewidth      :: Real;
+        new_figure  :: Bool = true,
+        show_figure :: Bool = true,
+        plot_labels  :: Vector{<:Any} =[],
+        plot_colors  :: Vector{<:Any} = [],
+        plot_transitions :: Bool = false,
+        parallel :: Bool = false
+    )
+
+Calculates and plots the spectrum by setting scattering angles theta and twotheta in degrees.
+q_beam is the magnitude of q_in and q_out.
+"""
 function plot_spectrum(
         lab :: LabSystem,
         energies    :: Vector{<:Real},
         theta_values   :: Vector{<:Real},
         twotheta :: Real,
-        dQ      :: Real,
+        q_beam      :: Real,
         linewidth      :: Real;
         new_figure  :: Bool = true,
         show_figure :: Bool = true,
@@ -218,7 +264,7 @@ function plot_spectrum(
         # Calculate spectrum and intensities
         @threads for i in 1:length(theta_values)
             lab_t = deepcopy(lab) # temporary labsystem
-            set_scattering_angles_deg!(lab_t, theta_values[i],twotheta, dQ)
+            set_scattering_angles_deg!(lab_t, theta_values[i],twotheta, q_beam)
             recalculate_dipole_operators!(lab_t)
             spectrums[i]=get_spectrum(lab_t;linewidth = linewidth)
             I[:,i]=[intensity(spectrums[i], omega) for omega in energies]
@@ -227,7 +273,7 @@ function plot_spectrum(
         BLAS.set_num_threads(n_blas)
     else
         for i in 1:length(theta_values)
-            set_scattering_angles_deg!(lab, theta_values[i],twotheta, dQ)
+            set_scattering_angles_deg!(lab, theta_values[i],twotheta, q_beam)
             recalculate_dipole_operators!(lab)
             spectrums[i]=get_spectrum(lab;linewidth = linewidth)
             I[:,i]=[intensity(spectrums[i], omega) for omega in energies]
@@ -298,14 +344,26 @@ end
 # export functions
 export plot_spectrum
 
-# function save spectrum
+"""
+    function save_spectrum_theta(
+        lab :: LabSystem,
+        energies    :: Vector{<:Real},
+        intensities :: Vector{<:Real},
+        theta:: Real, 
+        twotheta :: Real, 
+        q_beam :: Real,
+        filename :: String
+    )
+
+Function that saves spectrum to a .txt file.
+"""
 function save_spectrum_theta(
     lab :: LabSystem,
     energies    :: Vector{<:Real},
     intensities :: Vector{<:Real},
     theta:: Real, 
     twotheta :: Real, 
-    dQ :: Real,
+    q_beam :: Real,
     filename :: String
 )
     # open file
@@ -317,7 +375,7 @@ function save_spectrum_theta(
     end
     # write header with multiplet energies
     print(f, "# RIXS intensity (arb. units) as a function of energy loss \n")
-    print(f, "# theta=$(theta), twotheta=$(twotheta), dQ= $(dQ) \n#\n")
+    print(f, "# theta=$(theta), twotheta=$(twotheta), q_beam= $(q_beam) \n#\n")
     # write header line
     hl = "# E \t I"
     print(f, hl, "\n")
